@@ -11,7 +11,7 @@ import sys
 DEFAULT_QUALITY = '4K' # The quality used when no quality is provided, you can see some of the aliases below, in the convert_res function
 OUTPUT_LOCATION = ''  # Where the output video will be saved; current working directory by default; supports ~
 
-# progress bar
+# Progress bar
 PROGRESS_BAR_LENGTH = 40
 PROGRESS_BAR_UNIT_COLOR = 140, 140, 140
 PROGRESS_BAR_COMPLETED_COLOR = 255, 20, 20
@@ -65,13 +65,10 @@ if args.quality is False:
 	sys.exit()
 
 def on_progress(chunk: bytes, file_handler: BinaryIO, bytes_remaining: int):
-	# print(current_downloading)
-	# return
 	if current_downloading == 'video': bytes_downloaded = videototalbytes - bytes_remaining
 	else: bytes_downloaded = totalbytes - bytes_remaining
 
 	bar = ''
-	# bar += '\033[2K'  # Clear line
 	bar += '\033[2K\r'
 
 	progress_bar_completed_color = f'\033[38;2;{PROGRESS_BAR_COMPLETED_COLOR[0]};{PROGRESS_BAR_COMPLETED_COLOR[1]};{PROGRESS_BAR_COMPLETED_COLOR[2]}m'
@@ -96,8 +93,6 @@ def on_progress(chunk: bytes, file_handler: BinaryIO, bytes_remaining: int):
 	
 	bar += f'  \033[0m{time_left} {unit_color}seconds'
 
-	# print(bar)
-	# print('hi')
 	print(bar + '\033[0m', end='')
 
 # Init yt object
