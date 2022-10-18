@@ -1,0 +1,9 @@
+default_quality: 4K  # The max quality used when no quality is specified
+output_location: ~/Downloads  # Where videos are downloaded to
+ffmpeg_path:  # If left blank, the ffmpeg command will be used. If filled in, the ffmpeg executable from this path will be used
+
+progress_bar:
+  length: 40
+  unit_color: [140, 140, 140]
+  completed_color: [255, 50, 50]
+  not_completed_color: [140, 140, 140]
