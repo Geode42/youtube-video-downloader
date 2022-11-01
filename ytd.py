@@ -3,7 +3,7 @@ from pytube import YouTube
 import pytube
 import argparse
 import tempfile
-from os import system
+from os import system, makedirs
 from os.path import isfile, isdir, expanduser, abspath
 from time import time
 import platform
@@ -16,7 +16,25 @@ try:
 	using_pyperclip = True
 except ModuleNotFoundError: pass
 
-CONFIG_FILE = './ytd_config.yaml'
+default_config = """default_quality: 4K  # The max quality used when no quality is specified
+output_location: ~/Downloads  # Where videos are downloaded to
+ffmpeg_path: bundled  # If "bundled", the bundled ffmpeg will be used (won't work if you're not using the pre-compiled version). If left blank, the ffmpeg command will be used. If filled in with something else, the ffmpeg executable from this path will be used
+
+progress_bar:
+  length: 40
+  unit_color: [140, 140, 140]
+  completed_color: [255, 50, 50]
+  not_completed_color: [140, 140, 140]"""
+
+config_folder = expanduser('~/.ytd')
+CONFIG_FILE = config_folder + '/config.yaml'
+if not isdir(config_folder):
+	makedirs(config_folder)
+if not isfile(CONFIG_FILE):
+	print('Creating config file...')
+	with open(CONFIG_FILE, 'w') as f:
+		f.write(default_config)
+	print(f'Config file created at {CONFIG_FILE}')
 
 try:
 	with open(CONFIG_FILE) as f:
@@ -33,43 +51,54 @@ except FileNotFoundError:
 	print('Config file not found')
 	sys.exit(1)
 
-command_start = 'ffmpeg' if FFMPEG_PATH is None else FFMPEG_PATH
-if FFMPEG_PATH:
+# Get the args
+parser = argparse.ArgumentParser()
+parser.add_argument('url', nargs='?', help='The URL of the video; this can as short as it\'s 11-character long ID, or as long as the full URL displayed in your browser')
+parser.add_argument('-q', '--quality', help="Overrides the max resolution defined in the config")
+parser.add_argument('-f', '--filename', help='The filename of the downloaded video')
+parser.add_argument('-c', '--clipboard', help='Gets the url from your clipboard', action='store_true')
+parser.add_argument('-o', '--output_directory', help='Overrides the output directory defined in the config')
+
+args = parser.parse_args()
+
+# This is Useful in general
+CLEARLINESTRING = '\033[2K\r' # "\033[2K" clears the entire line ("\r" only clears the line up to the cursor's current position), "\r" moves the cursor back to the start of the line
+
+# Get the first part of the command (that will be run at the end)
+command_start = FFMPEG_PATH if FFMPEG_PATH else 'ffmpeg'
+if FFMPEG_PATH == 'bundled':
+	command_start = sys._MEIPASS + '/ffmpeg'
+elif FFMPEG_PATH:
 	if not isfile(FFMPEG_PATH):
 		print('FFmpeg executable defined in config not found')
 		sys.exit(1)
 
-if len(OUTPUT_LOCATION) > 0:
-	OUTPUT_LOCATION = expanduser(OUTPUT_LOCATION)  # Allow using ~
-	if not isdir(OUTPUT_LOCATION):
-		print("The output location doesn't exist")
-		sys.exit(1)
+# Get output directory
+if args.output_directory:
+	OUTPUT_LOCATION = args.output_directory
 
-CLEARLINESTRING = '\033[2K\r' # "\033[2K" clears the entire line ("\r" only clears the line up to the cursor's current position), "\r" moves the cursor back to the start of the line
+OUTPUT_LOCATION = expanduser(OUTPUT_LOCATION)  # Allow using ~
+if not isdir(OUTPUT_LOCATION):
+	print("The output location doesn't exist")
+	sys.exit(1)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('url', nargs='?', help='The URL of the video; this can as short as it\'s 11-character long ID, or as long as the full URL displayed in your browser')
-parser.add_argument('-q', '--quality', help="Used to explicitly define the max resolution you'd like to download")
-parser.add_argument('-f', '--filename', help='The filename of the downloaded video')
-parser.add_argument('-cb', '--clipboard', help='Grabs the url from your clipboard, only works if pyperclip is installed', action='store_true')
-
-args = parser.parse_args()
-
+# Get URL
 if args.clipboard:
 	if not using_pyperclip:
-		print('Your Python Interpreter needs to have the pyperclip installed in order to use the -cb | --clipboard flag')
+		print('Your Python Interpreter needs to have the pyperclip installed in order to use the -c | --clipboard flag')
 		sys.exit(1)
 
 	if args.url:
-		print("url and -cb | --clipboard can't be used together")
+		print("url and -c | --clipboard can't be used together")
 		sys.exit(1)
 	url = pyperclip.paste()
 else:
 	if not args.url:
-		print('One of the following arguments must be used: url, -cb | --clipboard')
+		print('One of the following arguments must be used: url, -c | --clipboard')
 		sys.exit(1)
 	url = args.url
 
+# This function converts user-friendly resolutions into the boring resolutions that pytube understands
 def convert_res(res):
 	res = res.lower() \
 			 .rstrip('p') \
